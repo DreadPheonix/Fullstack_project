@@ -1,0 +1,65 @@
+{
+  "paths": {
+    "dataset_directory": "Dataset",
+    "model_directory": "model",
+    "local_datasets": [
+      {
+        "csv": "combined_dataset.csv",
+        "parquet": "combined_dataset.parquet"
+      },
+      {
+        "csv": "diverse_adversarial_dataset.csv",
+        "parquet": "diverse_adversarial_dataset.parquet"
+      }
+    ],
+    "model": "model.pkl",
+    "vectorizer": "vectorizer.pkl",
+    "evaluation_plot": "evaluation.png"
+  },
+  "data": {
+    "text_column": "text",
+    "target_column": "target",
+    "text_columns": ["text", "sms", "message", "v2", "email", "content", "Ticket Description"],
+    "label_columns": ["target", "label", "Label", "labels", "class", "category", "spam", "type"],
+    "datasets": [
+      "ucirvine/sms_spam",
+      "PrasadAdsul21/Spam-MailClassification-Dataset",
+      "Goodmotion/spam-mail",
+      "daviiiidcpp1/sms-spam-combined"
+    ],
+    "labels": {
+      "spam": ["spam", "1", "true", "yes", "junk", "phishing", "malicious"],
+      "ham": ["ham", "0", "false", "no", "not spam", "legitimate", "normal"]
+    },
+    "class_mapping": {
+      "ham": 0,
+      "spam": 1
+    }
+  },
+  "training": {
+    "test_size": 0.2,
+    "random_state": 42,
+    "max_features": 3000,
+    "ngram_range": [1, 2],
+    "validation_folds": 5,
+    "max_iter": 1000,
+    "overfitting_gap_limit": 0.05,
+    "naive_bayes_alpha": [0.01, 0.05, 0.1, 0.5, 1.0, 2.0],
+    "logistic_regression_c": [0.1, 0.3, 0.5, 0.8, 1.0, 1.5]
+  },
+  "prediction": {
+    "max_message_length": 5000
+  },
+  "app": {
+    "host": "127.0.0.1",
+    "port": 5000
+  },
+  "evaluation": {
+    "previous_metrics": {
+      "accuracy": 0.9498,
+      "precision": 0.8688,
+      "recall": 0.9085,
+      "f1": 0.8882
+    }
+  }
+}
