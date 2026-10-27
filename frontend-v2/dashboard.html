@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMS Shield - Spam & Phishing Inspector</title>
+
+  <!-- Tailwind CSS CDN with Class Dark Mode -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+  <script>
+    // Initialize theme before render to eliminate flash
+    if (localStorage.getItem('theme_v2') === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  </script>
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Exact Palette Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#FAFAFA] dark:bg-[#121212] text-[#18181B] dark:text-[#F4F4F5] min-h-screen flex flex-col md:flex-row transition-colors duration-150">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- ========================================================================= -->
+  <!-- 1. FIXED LEFT SIDEBAR (Approx. 250px Wide)                                -->
+  <!-- ========================================================================= -->
+  <aside class="w-full md:w-[250px] bg-[#FFFFFF] dark:bg-[#27272A] border-b md:border-b-0 md:border-r border-[#E4E4E7] dark:border-[#3F3F46] flex flex-col justify-between p-4 sm:p-5 flex-shrink-0">
+
+    <div class="space-y-6">
+      <!-- Brand Identity -->
+      <div class="flex items-center gap-3 px-2">
+        <div class="w-9 h-9 rounded-xl bg-[#18181B] text-[#FFFFFF] dark:bg-[#F4F4F5] dark:text-[#18181B] flex items-center justify-center text-base shadow-sm">
+          <i class="fas fa-shield-halved"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-sm text-[#18181B] dark:text-[#F4F4F5] tracking-tight">SMS Shield</h1>
+          <span class="text-[10px] font-semibold tracking-wider uppercase text-[#71717A] dark:text-[#A1A1AA]">Security Workspace</span>
+        </div>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="space-y-1">
+        <button id="tab-btn-detector" onclick="switchTab('detector')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold bg-[#18181B] text-[#FFFFFF] dark:bg-[#F4F4F5] dark:text-[#18181B] shadow-sm transition-all text-left">
+          <i class="fas fa-magnifying-glass w-4 text-center"></i>
+          <span>Inspector</span>
+        </button>
+
+        <button id="tab-btn-history" onclick="switchTab('history')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium text-[#71717A] dark:text-[#A1A1AA] hover:text-[#18181B] dark:hover:text-[#F4F4F5] hover:bg-[#F4F4F5] dark:hover:bg-[#3F3F46] transition-all text-left">
+          <i class="fas fa-clock-rotate-left w-4 text-center"></i>
+          <span>Scan History</span>
+        </button>
+
+        <button id="tab-btn-team" onclick="switchTab('team')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium text-[#71717A] dark:text-[#A1A1AA] hover:text-[#18181B] dark:hover:text-[#F4F4F5] hover:bg-[#F4F4F5] dark:hover:bg-[#3F3F46] transition-all text-left">
+          <i class="fas fa-users w-4 text-center"></i>
+          <span>Project Team</span>
+        </button>
+      </nav>
+
+      <!-- System Diagnostic Spec Pill -->
+      <div class="p-3 rounded-lg bg-[#FAFAFA] dark:bg-[#121212] border border-[#E4E4E7] dark:border-[#3F3F46] text-[11px] space-y-1.5">
+        <div class="flex items-center justify-between">
+          <span class="text-[#71717A] dark:text-[#A1A1AA] font-medium">Model Engine</span>
+          <span class="text-[#16A34A] dark:text-[#4ADE80] font-bold flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#16A34A] dark:bg-[#4ADE80] inline-block animate-pulse"></span>
+            Naive Bayes
+          </span>
+        </div>
+        <div class="flex items-center justify-between text-[#71717A] dark:text-[#A1A1AA]">
+          <span>Feature Vector</span>
+          <span class="font-mono text-[#18181B] dark:text-[#F4F4F5]">TF-IDF</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Profile & Theme Controls -->
+    <div class="pt-4 border-t border-[#E4E4E7] dark:border-[#3F3F46] flex items-center justify-between mt-4">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-[#DCFCE7] dark:bg-[#14532D] text-[#16A34A] dark:text-[#4ADE80] font-bold flex items-center justify-center text-xs">
+          S
+        </div>
+        <div>
+          <p class="text-xs font-bold text-[#18181B] dark:text-[#F4F4F5] leading-tight">SMS Shield</p>
+          <p class="text-[10px] text-[#71717A] dark:text-[#A1A1AA]">Spam Detection</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1">
+        <button onclick="toggleTheme()" class="p-2 rounded-lg text-[#71717A] dark:text-[#A1A1AA] hover:text-[#18181B] dark:hover:text-[#F4F4F5]" title="Toggle Dark/Light Mode">
+          <i id="theme-icon" class="fas fa-sun text-xs text-[#F4F4F5]"></i>
+        </button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ========================================================================= -->
+  <!-- 2. MAIN CONTENT AREA (Remaining Width)                                     -->
+  <!-- ========================================================================= -->
+  <main class="flex-1 p-4 sm:p-6 lg:p-8 w-full max-w-[1400px] mx-auto space-y-6 overflow-y-auto">
+
+    <!-- ======================================================================= -->
+    <!-- TAB 1: SMS INSPECTOR WORKSPACE                                          -->
+    <!-- ======================================================================= -->
+    <div id="tab-content-detector" class="space-y-6">
+
+      <!-- HEADER & HORIZONTAL METRICS BAR (Top Left) -->
+      <section class="space-y-2">
+        <div>
+          <h2 class="text-2xl font-black tracking-tight text-[#18181B] dark:text-[#F4F4F5]">SMS Spam & Phishing Inspector</h2>
+          <p class="text-xs text-[#71717A] dark:text-[#A1A1AA]">Real-time threat evaluation workspace powered by TF-IDF n-gram vectorization and probabilistic classification.</p>
+        </div>
+
+        <!-- Subtle Horizontal Metrics Bar (Positioned Directly Below Subtitle) -->
+        <div class="flex flex-wrap items-center gap-2.5 pt-1">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#FFFFFF] dark:bg-[#27272A] border border-[#E4E4E7] dark:border-[#3F3F46] text-xs font-semibold">
+            <span class="text-[#71717A] dark:text-[#A1A1AA]">Scanned:</span>
+            <span class="font-mono text-[#18181B] dark:text-[#F4F4F5]">128</span>
+          </div>
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#FFFFFF] dark:bg-[#27272A] border border-[#E4E4E7] dark:border-[#3F3F46] text-xs font-semibold">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#DC2626] dark:bg-[#F87171]"></span>
+            <span class="text-[#71717A] dark:text-[#A1A1AA]">Spam:</span>
+            <span class="font-mono text-[#DC2626] dark:text-[#F87171]">38</span>
+          </div>
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#FFFFFF] dark:bg-[#27272A] border border-[#E4E4E7] dark:border-[#3F3F46] text-xs font-semibold">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#16A34A] dark:bg-[#4ADE80]"></span>
+            <span class="text-[#71717A] dark:text-[#A1A1AA]">Ham (Safe):</span>
+            <span class="font-mono text-[#16A34A] dark:text-[#4ADE80]">90</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- SPLIT-PANE WORKSPACE: LEFT 60% / RIGHT 40% (CSS Grid 5-Column Split)  -->
+      <!-- ===================================================================== -->
+      <section class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
+
+        <!-- =================================================================== -->
+        <!-- 3. LEFT COLUMN: INPUT CONSOLE (60% Width - col-span-3)              -->
+        <!-- =================================================================== -->
+        <div class="lg:col-span-3 theme-card p-5 sm:p-6 flex flex-col justify-between space-y-4">
+
+          <div class="space-y-4">
+            <!-- Header with Integrated "Load Sample" Dropdown -->
+            <div class="flex items-center justify-between pb-3 border-b border-[#E4E4E7] dark:border-[#3F3F46]">
+              <div class="flex items-center gap-2">
+                <i class="fas fa-terminal text-xs text-[#71717A] dark:text-[#A1A1AA]"></i>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-[#18181B] dark:text-[#F4F4F5]">SMS Message Input Console</h3>
+              </div>
+
+              <!-- Sleek Dropdown Replacing Standalone Buttons -->
+              <div class="relative">
+                <select
+                  id="sample-dropdown"
+                  onchange="handleSampleSelect(this.value)"
+                  class="bg-[#FAFAFA] dark:bg-[#121212] border border-[#E4E4E7] dark:border-[#3F3F46] text-[#18181B] dark:text-[#F4F4F5] text-xs font-semibold px-3 py-1.5 rounded-lg focus:outline-none focus:border-[#18181B] dark:focus:border-[#F4F4F5] cursor-pointer transition-colors"
+                >
+                  <option value="">Load Sample Message...</option>
+                  <optgroup label="🚨 Phishing & Scams">
+                    <option value="lottery">Lottery Prize Alert ($1,500)</option>
+                    <option value="bank">Chase Bank Account Locked</option>
+                    <option value="gift">Free Apple iPad Gift Card</option>
+                    <option value="tax">IRS Overdue Tax Notice</option>
+                  </optgroup>
+                  <optgroup label="💬 Legitimate (Ham)">
+                    <option value="meeting">Team Meeting in Lab 3</option>
+                    <option value="class">Class Schedule Update</option>
+                    <option value="otp">Google Security Code (OTP)</option>
+                    <option value="delivery">Amazon Package Shipped</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+
+            <!-- Prominent Large Textarea -->
+            <div class="relative">
+              <textarea
+                id="sms-textarea"
+                rows="9"
+                maxlength="5000"
+                placeholder="Type or paste any SMS message here to inspect for malicious intent, spam patterns, or phishing indicators..."
+                class="w-full p-4 rounded-xl bg-[#FAFAFA] dark:bg-[#121212] border border-[#E4E4E7] dark:border-[#3F3F46] text-sm leading-relaxed text-[#18181B] dark:text-[#F4F4F5] placeholder-[#71717A] dark:placeholder-[#A1A1AA] focus:outline-none focus:border-[#18181B] dark:focus:border-[#F4F4F5] transition-colors resize-y font-sans"
+              ></textarea>
+            </div>
+
+            <!-- Character Progress & Counter -->
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-[11px] text-[#71717A] dark:text-[#A1A1AA]">
+                <span>Character Limit: <strong>5,000 max</strong></span>
+                <span id="char-count" class="font-mono font-medium text-[#18181B] dark:text-[#F4F4F5]">0 / 5,000 characters</span>
+              </div>
+              <div class="char-progress-track">
+                <div id="char-bar" class="char-progress-bar" style="width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- UNIFIED ACTION FOOTER -->
+          <div class="pt-4 border-t border-[#E4E4E7] dark:border-[#3F3F46] flex flex-col sm:flex-row items-center justify-between gap-3">
+            <!-- Bottom Left: Clear & Paste Clipboard -->
+            <div class="flex items-center gap-2">
+              <button onclick="clearSMSInput()" type="button" class="btn-secondary text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:text-[#DC2626] dark:hover:text-[#F87171]">
+                <i class="fas fa-trash-can text-[11px]"></i>
+                <span>Clear</span>
+              </button>
+              <button onclick="pasteClipboard()" type="button" class="btn-secondary text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                <i class="fas fa-paste text-[11px]"></i>
+                <span>Paste Clipboard</span>
+              </button>
+            </div>
+
+            <!-- Bottom Center / Specs (Subtle) -->
+            <div class="hidden xl:block text-[11px] text-[#71717A] dark:text-[#A1A1AA] font-mono">
+              Model: Naive Bayes | Vectorizer: TF-IDF
+            </div>
+
+            <!-- Bottom Right: Primary Action Button -->
+            <button id="btn-check-message" onclick="checkSMSMessage()" type="button" class="w-full sm:w-auto btn-primary-action px-7 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm disabled:opacity-60 disabled:cursor-wait">
+              <i class="fas fa-magnifying-glass text-xs"></i>
+              <span data-label>CHECK MESSAGE</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- 4. RIGHT COLUMN: OUTPUT & VERDICT (40% Width - col-span-2)           -->
+        <!-- =================================================================== -->
+        <div class="lg:col-span-2 theme-card p-5 sm:p-6 flex flex-col justify-between h-full min-h-[380px]">
+
+          <!-- STATE A: DEFAULT STATE (Awaiting Message Input) -->
+          <div id="analysis-placeholder" class="my-auto py-12 px-4 text-center space-y-3">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-[#FAFAFA] dark:bg-[#121212] border border-[#E4E4E7] dark:border-[#3F3F46] text-[#71717A] dark:text-[#A1A1AA] flex items-center justify-center text-xl shadow-inner">
+              <i class="fas fa-shield-halved"></i>
+            </div>
+            <div class="space-y-1">
+              <h4 class="text-sm font-bold text-[#18181B] dark:text-[#F4F4F5]">Awaiting message input...</h4>
+              <p class="text-xs text-[#71717A] dark:text-[#A1A1AA] max-w-xs mx-auto leading-relaxed">
+                Select a sample from the dropdown or paste an SMS into the console and press <strong class="text-[#18181B] dark:text-[#F4F4F5]">CHECK MESSAGE</strong> to view the live verdict.
+              </p>
+            </div>
+          </div>
+
+          <!-- STATE B: RESULT STATE (Generated Live at Eye Level - No Scroll) -->
+          <div id="analysis-result-card" class="space-y-4 hidden flex-1 flex flex-col justify-between">
+
+            <div class="space-y-4">
+              <!-- Result Section Header -->
+              <div class="flex items-center justify-between pb-2 border-b border-[#E4E4E7] dark:border-[#3F3F46]">
+                <div class="flex items-center gap-2">
+                  <span id="verdict-dot" class="w-2.5 h-2.5 rounded-full bg-[#16A34A] dark:bg-[#4ADE80]"></span>
+                  <span class="text-xs font-bold uppercase tracking-wider text-[#18181B] dark:text-[#F4F4F5]">Analysis Verdict</span>
+                </div>
+                <button onclick="dismissResult()" type="button" class="text-xs text-[#71717A] dark:text-[#A1A1AA] hover:text-[#18181B] dark:hover:text-[#F4F4F5] flex items-center gap-1">
+                  <i class="fas fa-rotate-left text-[10px]"></i>
+                  <span>Reset</span>
+                </button>
+              </div>
+
+              <!-- Main Verdict Banner -->
+              <div id="result-banner" class="p-4 rounded-xl flex items-center justify-between gap-3 border">
+                <div>
+                  <span class="text-[10px] font-extrabold uppercase tracking-wider opacity-80">Verdict Classification</span>
+                  <h4 id="result-title" class="text-xl font-black mt-0.5 tracking-tight">LEGITIMATE (HAM)</h4>
+                  <p id="result-desc" class="text-xs mt-0.5 leading-snug">No malicious triggers or deceptive patterns identified.</p>
+                </div>
+                <div id="result-badge-icon" class="text-3xl flex-shrink-0">
+                  <i class="fas fa-circle-check text-[#16A34A] dark:text-[#4ADE80]"></i>
+                </div>
+              </div>
+
+              <!-- Model Confidence Score -->
+              <div class="p-3.5 rounded-xl bg-[#FAFAFA] dark:bg-[#121212] border border-[#E4E4E7] dark:border-[#3F3F46] space-y-1.5">
+                <div class="flex items-center justify-between text-xs font-bold">
+                  <span class="text-[#71717A] dark:text-[#A1A1AA]">Classification Confidence</span>
+                  <span id="result-confidence" class="font-mono text-sm text-[#18181B] dark:text-[#F4F4F5]">99.2%</span>
+                </div>
+                <div class="w-full bg-[#E4E4E7] dark:bg-[#3F3F46] h-2 rounded-full overflow-hidden">
+                  <div id="result-confidence-bar" class="h-full rounded-full transition-all duration-500" style="width: 99.2%;"></div>
+                </div>
+              </div>
+
+              <!-- Identified Text Pattern Keywords -->
+              <div class="p-3.5 rounded-xl bg-[#FAFAFA] dark:bg-[#121212] border border-[#E4E4E7] dark:border-[#3F3F46] space-y-1.5">
+                <span class="text-[11px] font-bold text-[#71717A] dark:text-[#A1A1AA] uppercase">Model Classification</span>
+                <div id="result-keywords" class="flex flex-wrap gap-1.5 pt-1">
+                  <!-- Keyword chips dynamically inserted -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Actions Footer: Copy Report -->
+            <div class="pt-3 border-t border-[#E4E4E7] dark:border-[#3F3F46] flex items-center justify-between">
+              <span class="text-[11px] text-[#71717A] dark:text-[#A1A1AA]">F1-Score: <strong>0.978</strong></span>
+              <button onclick="copyVerdictReport()" type="button" class="btn-secondary text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                <i class="fas fa-copy text-[#16A34A] dark:text-[#4ADE80]"></i>
+                <span>Copy Report</span>
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- TAB 2: HISTORY LOG                                                      -->
+    <!-- ======================================================================= -->
+    <div id="tab-content-history" class="theme-card p-5 sm:p-6 space-y-4 hidden">
+      <div>
+        <h2 class="text-base font-bold text-[#18181B] dark:text-[#F4F4F5]">Recent Classification Logs</h2>
+        <p class="text-xs text-[#71717A] dark:text-[#A1A1AA]">Past SMS inspections recorded during this session.</p>
+      </div>
+
+      <div class="overflow-x-auto rounded-lg border border-[#E4E4E7] dark:border-[#3F3F46]">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="bg-[#FAFAFA] dark:bg-[#121212] border-b border-[#E4E4E7] dark:border-[#3F3F46] text-[#71717A] dark:text-[#A1A1AA] uppercase font-semibold">
+              <th class="py-3 px-3">Message Snippet</th>
+              <th class="py-3 px-3">Prediction</th>
+              <th class="py-3 px-3">Confidence</th>
+              <th class="py-3 px-3 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#E4E4E7] dark:divide-[#3F3F46]">
+            <tr>
+              <td class="py-3 px-3 max-w-sm truncate font-medium text-[#18181B] dark:text-[#F4F4F5]">URGENT: You have won a $1,500 Walmart gift card...</td>
+              <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#DC2626] dark:text-[#F87171]">Spam</span></td>
+              <td class="py-3 px-3 font-mono text-[#18181B] dark:text-[#F4F4F5]">98.5%</td>
+              <td class="py-3 px-3 text-right">
+                <button onclick="loadDirectSample('URGENT: You have won a $1,500 Walmart gift card! Claim your reward within 2 hours by texting WIN to 48210. Terms apply.')" class="text-[#16A34A] dark:text-[#4ADE80] font-semibold hover:underline">Re-test</button>
+              </td>
+            </tr>
+            <tr>
+              <td class="py-3 px-3 max-w-sm truncate font-medium text-[#18181B] dark:text-[#F4F4F5]">Hi Payal, are we still meeting in Lab 3 at 4:30 PM...</td>
+              <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#DCFCE7] dark:bg-[#14532D] text-[#16A34A] dark:text-[#4ADE80]">Ham</span></td>
+              <td class="py-3 px-3 font-mono text-[#18181B] dark:text-[#F4F4F5]">99.2%</td>
+              <td class="py-3 px-3 text-right">
+                <button onclick="loadDirectSample('Hi Payal, are we still meeting in Lab 3 at 4:30 PM to review our presentation slides with Professor Sharma?')" class="text-[#16A34A] dark:text-[#4ADE80] font-semibold hover:underline">Re-test</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- TAB 3: PROJECT TEAM CREDITS                                             -->
+    <!-- ======================================================================= -->
+    <div id="tab-content-team" class="theme-card p-5 sm:p-6 space-y-4 hidden">
+      <div>
+        <h2 class="text-base font-bold text-[#18181B] dark:text-[#F4F4F5]">Project Team & Architecture</h2>
+        <p class="text-xs text-[#71717A] dark:text-[#A1A1AA]">Full Stack AI Machine Learning Lab Project</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        <div class="p-4 rounded-xl bg-[#FAFAFA] dark:bg-[#121212] border border-[#E4E4E7] dark:border-[#3F3F46] space-y-1">
+          <p class="font-bold text-[#18181B] dark:text-[#F4F4F5] text-sm">Payal</p>
+          <p class="text-[#16A34A] dark:text-[#4ADE80] font-semibold">Lead Frontend Engineer</p>
+          <p class="text-[#71717A] dark:text-[#A1A1AA] mt-1">Split-pane analytical UI, responsive sidebar, state management, and interaction console.</p>
+        </div>
+        <div class="p-4 rounded-xl bg-[#FAFAFA] dark:bg-[#121212] border border-[#E4E4E7] dark:border-[#3F3F46] space-y-1">
+          <p class="font-bold text-[#18181B] dark:text-[#F4F4F5] text-sm">Priyanshu</p>
+          <p class="text-[#16A34A] dark:text-[#4ADE80] font-semibold">Machine Learning Engineer</p>
+          <p class="text-[#71717A] dark:text-[#A1A1AA] mt-1">SMS dataset preprocessing, Multinomial Naive Bayes model training, and TF-IDF pipeline.</p>
+        </div>
+        <div class="p-4 rounded-xl bg-[#FAFAFA] dark:bg-[#121212] border border-[#E4E4E7] dark:border-[#3F3F46] space-y-1">
+          <p class="font-bold text-[#18181B] dark:text-[#F4F4F5] text-sm">Priyanjal</p>
+          <p class="text-[#16A34A] dark:text-[#4ADE80] font-semibold">Backend Engineer</p>
+          <p class="text-[#71717A] dark:text-[#A1A1AA] mt-1">FastAPI endpoints, model serving integration, and SQLite database persistence.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/samples.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

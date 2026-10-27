@@ -3,13 +3,16 @@ from typing import Any
 
 import joblib
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from config import load_config
-from ml.preprocess import clean_text
+from ml.preprocess import clean_text, is_routine_transactional_message
 
 
 BASE_DIR = pathlib.Path(__file__).parent
+FRONTEND_DIR = BASE_DIR / "frontend-v2"
 CONFIG = load_config()
 PATHS = CONFIG["paths"]
 DATA_CONFIG = CONFIG["data"]
@@ -21,9 +24,11 @@ LABEL_MAP = {value: label for label, value in DATA_CONFIG["class_mapping"].items
 
 MODEL = joblib.load(MODEL_PATH)
 VECTORIZER = joblib.load(VECTORIZER_PATH)
+
+
 app = FastAPI(
-    title="Spam Detection API",
-    description="Detect whether a message is spam or ham using a trained ML model.",
+    title="SMS Shield API",
+    description="SMS spam detection and dashboard serving.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -32,6 +37,17 @@ app = FastAPI(
 
 class PredictRequest(BaseModel):
     message: str
+
+
+app.mount("/css", StaticFiles(directory=FRONTEND_DIR / "css"), name="css")
+app.mount("/js", StaticFiles(directory=FRONTEND_DIR / "js"), name="js")
+
+
+@app.get("/", include_in_schema=False)
+@app.get("/dashboard", include_in_schema=False)
+@app.get("/dashboard.html", include_in_schema=False)
+def dashboard_page() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "dashboard.html")
 
 
 def invalid_result(error: str) -> dict[str, Any]:
@@ -52,17 +68,20 @@ def predict(message: str) -> dict[str, Any]:
 
     features = VECTORIZER.transform([cleaned])
     prediction = int(MODEL.predict(features)[0])
-    confidence = float(MODEL.predict_proba(features)[0][prediction])
+    probabilities = MODEL.predict_proba(features)[0]
+    if (
+        prediction == DATA_CONFIG["class_mapping"]["spam"]
+        and is_routine_transactional_message(message)
+    ):
+        prediction = DATA_CONFIG["class_mapping"]["ham"]
+
+    class_indices = {int(label): index for index, label in enumerate(MODEL.classes_)}
+    confidence = float(probabilities[class_indices[prediction]])
 
     return {
         "label": LABEL_MAP[prediction],
         "confidence": round(confidence, 4),
     }
-
-
-@app.get("/")
-def status_route() -> dict[str, str]:
-    return {"status": "ready", "endpoint": "/predict"}
 
 
 @app.get("/health")
@@ -81,5 +100,9 @@ def predict_route(payload: PredictRequest) -> dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
 
-    app_config = CONFIG["app"]
-    uvicorn.run("app:app", host=app_config["host"], port=app_config["port"], reload=False)
+    uvicorn.run(
+        "app:app",
+        host=CONFIG["app"]["host"],
+        port=CONFIG["app"]["port"],
+        reload=False,
+    )
